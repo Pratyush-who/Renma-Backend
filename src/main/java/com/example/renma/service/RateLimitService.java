@@ -20,8 +20,8 @@ public class RateLimitService {
     }
 
     public void checkRegistrationLimit(String deviceKey, String canonicalEmail, boolean testEmail) {
-        assertUnderLimit("auth:rl:register:device:minute:" + deviceKey, 5, Duration.ofMinutes(1));
-        assertUnderLimit("auth:rl:register:device:hour:" + deviceKey, 25, Duration.ofHours(1));
+        assertUnderLimit("auth:rl:register:device:minute:" + deviceKey, 3, Duration.ofMinutes(1));
+        assertUnderLimit("auth:rl:register:device:hour:" + deviceKey, 10, Duration.ofHours(1));
 
         if (!testEmail) {
             assertUnderLimit("auth:rl:register:email:hour:" + hash(canonicalEmail), 3, Duration.ofHours(1));

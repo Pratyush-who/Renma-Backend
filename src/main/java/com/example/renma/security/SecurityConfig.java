@@ -25,7 +25,17 @@ public class SecurityConfig {
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         http.csrf(csrf -> csrf.disable())
                 .authorizeHttpRequests(auth -> auth
-                        .requestMatchers("/auth/**", "/oauth2/**", "/error").permitAll()
+                        .requestMatchers(
+                                "/auth/register",
+                                "/auth/verify",
+                                "/auth/resend-verification",
+                                "/auth/login",
+                                "/auth/google",
+                                "/auth/forgot-password",
+                                "/auth/reset-password",
+                                "/oauth2/**",
+                                "/error"
+                        ).permitAll()
                         .anyRequest().authenticated()
                 )
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))

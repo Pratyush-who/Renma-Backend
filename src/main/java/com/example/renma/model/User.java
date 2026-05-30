@@ -25,7 +25,7 @@ public class User {
     @Field("userName")
     private String username;
     private String email;
-    @Indexed(unique = true, partialFilter = "{ 'testAccount' : false }")
+    @Indexed(unique = true)
     private String canonicalEmail;
     private boolean testAccount;
     private String password;

@@ -2,7 +2,10 @@ package com.example.renma.controller;
 
 import com.example.renma.dto.AuthRequest;
 import com.example.renma.dto.AuthResponse;
+import com.example.renma.dto.ChangePasswordRequest;
+import com.example.renma.dto.ForgotPasswordRequest;
 import com.example.renma.dto.RegisterRequest;
+import com.example.renma.dto.ResetPasswordRequest;
 import com.example.renma.dto.VerifyRequest;
 import com.example.renma.exception.RateLimitExceededException;
 import com.example.renma.model.User;
@@ -28,6 +31,7 @@ import org.springframework.web.bind.annotation.RestController;
 import java.security.Principal;
 import java.util.Date;
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 
 @RestController
@@ -41,6 +45,8 @@ public class AuthController {
     private final EmailAddressService emailAddressService;
     private final OtpService otpService;
     private final RateLimitService rateLimitService;
+    private static final String VERIFICATION_EMAIL_RESPONSE = "If an account exists, we've sent a verification email.";
+    private static final String PASSWORD_RESET_EMAIL_RESPONSE = "If an account exists, we've sent a password reset email.";
 
     public AuthController(
             JwtUtil jwtUtil,
@@ -72,8 +78,8 @@ public class AuthController {
         if (email == null) {
             return ResponseEntity.badRequest().body("Valid email is required");
         }
-        if (password == null || password.isBlank()) {
-            return ResponseEntity.badRequest().body("Password is required");
+        if (!isValidPassword(password)) {
+            return ResponseEntity.badRequest().body("Password must be at least 8 characters long");
         }
 
         try {
@@ -82,14 +88,14 @@ public class AuthController {
             if (userRepository.findByUsername(username).isPresent()) {
                 return ResponseEntity.badRequest().body("Username is already taken!");
             }
-            if (!email.testEmail() && userRepository.findByCanonicalEmail(email.canonicalEmail()).isPresent()) {
+            if (userRepository.findByCanonicalEmail(email.canonicalEmail()).isPresent()) {
                 return ResponseEntity.badRequest().body("Email is already taken!");
             }
 
             User user = User.builder()
                     .id(UUID.randomUUID().toString())
                     .username(username)
-                    .email(email.email())
+                    .email(email.normalizedEmail())
                     .canonicalEmail(email.canonicalEmail())
                     .testAccount(email.testEmail())
                     .password(passwordEncoder.encode(password))
@@ -125,7 +131,11 @@ public class AuthController {
 
         try {
             rateLimitService.checkVerificationLimit(deviceKey(request), email.canonicalEmail());
-            User user = findUserForVerification(email);
+            Optional<User> optionalUser = findUserForVerification(email);
+            if (optionalUser.isEmpty()) {
+                return ResponseEntity.badRequest().body("Invalid or expired OTP!");
+            }
+            User user = optionalUser.get();
             String otp = clean(verifyRequest.getOtp());
 
             if (email.testEmail() && "123456".equals(otp)) {
@@ -137,7 +147,6 @@ public class AuthController {
             if (otpService.verifyOtp(user.getId(), otp)) {
                 user.setVerified(true);
                 userRepository.save(user);
-                otpService.clearOtp(user.getId());
                 return ResponseEntity.ok("Email verified successfully!");
             }
         } catch (RateLimitExceededException e) {
@@ -147,6 +156,91 @@ public class AuthController {
         }
 
         return ResponseEntity.badRequest().body("Invalid or expired OTP!");
+    }
+
+    @PostMapping("/resend-verification")
+    public ResponseEntity<?> resendVerification(@RequestBody VerifyRequest verifyRequest, HttpServletRequest request) {
+        NormalizedEmail email = emailAddressService.normalize(verifyRequest.getEmail());
+        if (email == null) {
+            return ResponseEntity.badRequest().body("Valid email is required");
+        }
+
+        try {
+            rateLimitService.checkVerificationLimit(deviceKey(request), email.canonicalEmail());
+            userRepository.findByCanonicalEmail(email.canonicalEmail())
+                    .filter(user -> !user.isVerified())
+                    .filter(user -> !user.isTestAccount())
+                    .ifPresent(user -> {
+                        String otp = otpService.createOtp(user.getId());
+                        emailService.sendOtp(user.getEmail(), otp);
+                    });
+            return ResponseEntity.ok(VERIFICATION_EMAIL_RESPONSE);
+        } catch (RateLimitExceededException e) {
+            return ResponseEntity.status(HttpStatus.TOO_MANY_REQUESTS).body(e.getMessage());
+        } catch (RedisConnectionFailureException e) {
+            return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE).body("Verification service is temporarily unavailable.");
+        }
+    }
+
+    @PostMapping("/forgot-password")
+    public ResponseEntity<?> forgotPassword(@RequestBody ForgotPasswordRequest forgotPasswordRequest, HttpServletRequest request) {
+        NormalizedEmail email = emailAddressService.normalize(forgotPasswordRequest.getEmail());
+        if (email == null) {
+            return ResponseEntity.badRequest().body("Valid email is required");
+        }
+
+        try {
+            rateLimitService.checkVerificationLimit(deviceKey(request), email.canonicalEmail());
+            userRepository.findByCanonicalEmail(email.canonicalEmail())
+                    .filter(User::isVerified)
+                    .filter(user -> !user.isTestAccount())
+                    .ifPresent(user -> {
+                        String otp = otpService.createPasswordResetOtp(user.getId());
+                        emailService.sendOtp(user.getEmail(), otp);
+                    });
+            return ResponseEntity.ok(PASSWORD_RESET_EMAIL_RESPONSE);
+        } catch (RateLimitExceededException e) {
+            return ResponseEntity.status(HttpStatus.TOO_MANY_REQUESTS).body(e.getMessage());
+        } catch (RedisConnectionFailureException e) {
+            return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE).body("Password reset service is temporarily unavailable.");
+        }
+    }
+
+    @PostMapping("/reset-password")
+    public ResponseEntity<?> resetPassword(@RequestBody ResetPasswordRequest resetPasswordRequest, HttpServletRequest request) {
+        NormalizedEmail email = emailAddressService.normalize(resetPasswordRequest.getEmail());
+        if (email == null) {
+            return ResponseEntity.badRequest().body("Valid email is required");
+        }
+        if (!isValidPassword(resetPasswordRequest.getNewPassword())) {
+            return ResponseEntity.badRequest().body("Password must be at least 8 characters long");
+        }
+        if (!resetPasswordRequest.getNewPassword().equals(resetPasswordRequest.getConfirmPassword())) {
+            return ResponseEntity.badRequest().body("Passwords do not match");
+        }
+
+        try {
+            rateLimitService.checkVerificationLimit(deviceKey(request), email.canonicalEmail());
+            Optional<User> optionalUser = userRepository.findByCanonicalEmail(email.canonicalEmail())
+                    .filter(User::isVerified)
+                    .filter(user -> !user.isTestAccount());
+            if (optionalUser.isEmpty()) {
+                return ResponseEntity.badRequest().body("Invalid or expired OTP!");
+            }
+
+            User user = optionalUser.get();
+            if (!otpService.verifyPasswordResetOtp(user.getId(), clean(resetPasswordRequest.getOtp()))) {
+                return ResponseEntity.badRequest().body("Invalid or expired OTP!");
+            }
+
+            user.setPassword(passwordEncoder.encode(resetPasswordRequest.getNewPassword()));
+            userRepository.save(user);
+            return ResponseEntity.ok("Password reset successfully.");
+        } catch (RateLimitExceededException e) {
+            return ResponseEntity.status(HttpStatus.TOO_MANY_REQUESTS).body(e.getMessage());
+        } catch (RedisConnectionFailureException e) {
+            return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE).body("Password reset service is temporarily unavailable.");
+        }
     }
 
     @PostMapping("/login")
@@ -177,15 +271,39 @@ public class AuthController {
         return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Invalid credentials");
     }
 
-    private User findUserForVerification(NormalizedEmail email) {
-        if (email.testEmail()) {
-            return userRepository.findFirstByCanonicalEmailAndVerifiedFalseOrderByCreatedAtDesc(email.canonicalEmail())
-                    .orElseGet(() -> userRepository.findFirstByCanonicalEmailOrderByCreatedAtDesc(email.canonicalEmail())
-                            .orElseThrow(() -> new RuntimeException("User not found")));
+    @PostMapping("/change-password")
+    public ResponseEntity<?> changePassword(@RequestBody ChangePasswordRequest changePasswordRequest, Principal principal) {
+        if (principal == null) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Authentication required");
+        }
+        if (changePasswordRequest.getOldPassword() == null || changePasswordRequest.getOldPassword().isBlank()) {
+            return ResponseEntity.badRequest().body("Old password is required");
+        }
+        if (!isValidPassword(changePasswordRequest.getNewPassword())) {
+            return ResponseEntity.badRequest().body("Password must be at least 8 characters long");
+        }
+        if (!changePasswordRequest.getNewPassword().equals(changePasswordRequest.getConfirmPassword())) {
+            return ResponseEntity.badRequest().body("Passwords do not match");
         }
 
-        return userRepository.findByCanonicalEmail(email.canonicalEmail())
-                .orElseThrow(() -> new RuntimeException("User not found"));
+        User user = userRepository.findById(principal.getName())
+                .orElse(null);
+        if (user == null || user.getPassword() == null || !passwordEncoder.matches(changePasswordRequest.getOldPassword(), user.getPassword())) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Invalid credentials");
+        }
+
+        user.setPassword(passwordEncoder.encode(changePasswordRequest.getNewPassword()));
+        userRepository.save(user);
+        return ResponseEntity.ok("Password changed successfully.");
+    }
+
+    private Optional<User> findUserForVerification(NormalizedEmail email) {
+        if (email.testEmail()) {
+            return userRepository.findFirstByCanonicalEmailAndVerifiedFalseOrderByCreatedAtDesc(email.canonicalEmail())
+                    .or(() -> userRepository.findFirstByCanonicalEmailOrderByCreatedAtDesc(email.canonicalEmail()));
+        }
+
+        return userRepository.findByCanonicalEmail(email.canonicalEmail());
     }
 
     private String clean(String value) {
@@ -193,6 +311,10 @@ public class AuthController {
             return null;
         }
         return value.trim();
+    }
+
+    private boolean isValidPassword(String password) {
+        return password != null && password.length() >= 8;
     }
 
     private String deviceKey(HttpServletRequest request) {

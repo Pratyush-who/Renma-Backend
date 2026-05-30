@@ -14,33 +14,22 @@ public class EmailAddressService {
             return null;
         }
 
-        String email = rawEmail.trim().toLowerCase(Locale.ROOT);
-        int atIndex = email.indexOf('@');
-        if (atIndex <= 0 || atIndex != email.lastIndexOf('@') || atIndex == email.length() - 1) {
+        String normalizedEmail = rawEmail.trim().toLowerCase(Locale.ROOT);
+        int atIndex = normalizedEmail.indexOf('@');
+        if (atIndex <= 0 || atIndex != normalizedEmail.lastIndexOf('@') || atIndex == normalizedEmail.length() - 1) {
             return null;
         }
 
-        String localPart = email.substring(0, atIndex);
-        String domain = email.substring(atIndex + 1);
-        String canonicalDomain = "googlemail.com".equals(domain) ? "gmail.com" : domain;
-        String canonicalLocalPart = localPart;
+        String localPart = normalizedEmail.substring(0, atIndex);
+        String domain = normalizedEmail.substring(atIndex + 1);
 
-        if ("gmail.com".equals(canonicalDomain)) {
-            int plusIndex = canonicalLocalPart.indexOf('+');
-            if (plusIndex >= 0) {
-                canonicalLocalPart = canonicalLocalPart.substring(0, plusIndex);
-            }
-            canonicalLocalPart = canonicalLocalPart.replace(".", "");
-        }
-
-        if (canonicalLocalPart.isBlank()) {
+        if (localPart.isBlank() || domain.isBlank()) {
             return null;
         }
 
-        String canonicalEmail = canonicalLocalPart + "@" + canonicalDomain;
-        return new NormalizedEmail(email, canonicalEmail, TEST_EMAIL.equals(canonicalEmail));
+        return new NormalizedEmail(normalizedEmail, normalizedEmail, TEST_EMAIL.equals(normalizedEmail));
     }
 
-    public record NormalizedEmail(String email, String canonicalEmail, boolean testEmail) {
+    public record NormalizedEmail(String normalizedEmail, String canonicalEmail, boolean testEmail) {
     }
 }

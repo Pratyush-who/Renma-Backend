@@ -48,10 +48,10 @@ public class OAuth2Controller {
         User user;
 
         if (optionalUser.isEmpty()) {
-            String username = uniqueUsername(principal.getAttribute("name"), email.email());
+            String username = uniqueUsername(principal.getAttribute("name"), email.normalizedEmail());
             user = User.builder()
                     .id(UUID.randomUUID().toString())
-                    .email(email.email())
+                    .email(email.normalizedEmail())
                     .canonicalEmail(email.canonicalEmail())
                     .testAccount(email.testEmail())
                     .username(username)
