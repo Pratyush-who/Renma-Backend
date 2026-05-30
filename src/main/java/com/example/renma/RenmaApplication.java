@@ -9,5 +9,4 @@ public class RenmaApplication {
 	public static void main(String[] args) {
 		SpringApplication.run(RenmaApplication.class, args);
 	}
-
 }
