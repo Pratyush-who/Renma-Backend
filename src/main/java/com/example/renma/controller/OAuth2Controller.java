@@ -56,6 +56,7 @@ public class OAuth2Controller {
                     .testAccount(email.testEmail())
                     .username(username)
                     .profilePic(principal.getAttribute("picture"))
+                    .plan("free")
                     .isVerified(true)
                     .createdAt(new Date())
                     .build();

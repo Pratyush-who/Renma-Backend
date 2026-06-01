@@ -47,6 +47,7 @@ public class AuthController {
     private final RateLimitService rateLimitService;
     private static final String VERIFICATION_EMAIL_RESPONSE = "If an account exists, we've sent a verification email.";
     private static final String PASSWORD_RESET_EMAIL_RESPONSE = "If an account exists, we've sent a password reset email.";
+    private static final String FREE_PLAN = "free";
 
     public AuthController(
             JwtUtil jwtUtil,
@@ -85,21 +86,24 @@ public class AuthController {
         try {
             rateLimitService.checkRegistrationLimit(deviceKey(request), email.canonicalEmail(), email.testEmail());
 
-            if (userRepository.findByUsername(username).isPresent()) {
+            String finalUsername = email.testEmail() ? uniqueUsername(username) : username;
+            if (!email.testEmail() && userRepository.findByUsername(finalUsername).isPresent()) {
                 return ResponseEntity.badRequest().body("Username is already taken!");
             }
-            if (userRepository.findByCanonicalEmail(email.canonicalEmail()).isPresent()) {
+            if (!email.testEmail() && userRepository.findByCanonicalEmail(email.canonicalEmail()).isPresent()) {
                 return ResponseEntity.badRequest().body("Email is already taken!");
             }
 
             User user = User.builder()
                     .id(UUID.randomUUID().toString())
-                    .username(username)
+                    .username(finalUsername)
                     .email(email.normalizedEmail())
                     .canonicalEmail(email.canonicalEmail())
                     .testAccount(email.testEmail())
                     .password(passwordEncoder.encode(password))
-                    .profilePic(registerRequest.getProfilePic())
+                    .profilePic(clean(registerRequest.getProfilePic()))
+                    .interests(normalizeInterests(registerRequest.getInterests()))
+                    .plan(FREE_PLAN)
                     .isVerified(false)
                     .createdAt(new Date())
                     .build();
@@ -259,12 +263,7 @@ public class AuthController {
                 if (!user.isVerified()) {
                     return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Email is not verified");
                 }
-                String token = jwtUtil.generateToken(new org.springframework.security.core.userdetails.User(
-                        user.getId(),
-                        user.getPassword(),
-                        new java.util.ArrayList<>()
-                ));
-                return ResponseEntity.ok(new AuthResponse(token));
+                return ResponseEntity.ok(new AuthResponse(issueToken(user)));
             }
         }
 
@@ -306,6 +305,29 @@ public class AuthController {
         return userRepository.findByCanonicalEmail(email.canonicalEmail());
     }
 
+    private String issueToken(User user) {
+        return jwtUtil.generateToken(new org.springframework.security.core.userdetails.User(
+                user.getId(),
+                user.getPassword() == null ? "" : user.getPassword(),
+                new java.util.ArrayList<>()
+        ));
+    }
+
+    private String uniqueUsername(String preferredUsername) {
+        String baseUsername = clean(preferredUsername);
+        if (baseUsername == null) {
+            baseUsername = "user";
+        }
+
+        String candidate = baseUsername;
+        int suffix = 1;
+        while (userRepository.findByUsername(candidate).isPresent()) {
+            candidate = baseUsername + suffix;
+            suffix++;
+        }
+        return candidate;
+    }
+
     private String clean(String value) {
         if (value == null || value.isBlank()) {
             return null;
@@ -315,6 +337,19 @@ public class AuthController {
 
     private boolean isValidPassword(String password) {
         return password != null && password.length() >= 8;
+    }
+
+    private List<String> normalizeInterests(List<String> interests) {
+        if (interests == null) {
+            return List.of();
+        }
+
+        return interests.stream()
+                .map(this::clean)
+                .filter(interest -> interest != null && interest.length() <= 40)
+                .distinct()
+                .limit(20)
+                .toList();
     }
 
     private String deviceKey(HttpServletRequest request) {

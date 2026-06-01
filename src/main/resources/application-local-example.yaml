@@ -30,3 +30,20 @@ jwt:
   secret: "<your-long-random-jwt-secret>"
   expiration: 1296000000 # 15 days
 
+auth:
+  mobile:
+    test-bypass-enabled: true
+    test-mobile-number: "1234567890"
+    test-otp: "123456"
+
+obligr:
+  otp:
+    base-url: "https://obligr.io"
+    api-key: "<your-obligr-api-key>"
+    sender-id: "<your-active-header-id>"
+    message: "Your OTP Verification Code is : ##OTP##"
+    dlt-template-id: "<optional-dlt-template-id>"
+    dlt-pe-id: "<optional-dlt-pe-id>"
+    email-id: "<your-obligr-account-email>"
+    expire-time: 180
+    otp-length: 6

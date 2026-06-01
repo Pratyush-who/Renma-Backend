@@ -33,6 +33,23 @@ public class RateLimitService {
         assertUnderLimit("auth:rl:verify:email:minute:" + hash(canonicalEmail), 5, Duration.ofMinutes(1));
     }
 
+    public void checkMobileOtpRequestLimit(String deviceKey, String canonicalMobileNumber, boolean testMobile) {
+        assertUnderLimit("auth:rl:mobile-otp:request:device:minute:" + deviceKey, 3, Duration.ofMinutes(1));
+        assertUnderLimit("auth:rl:mobile-otp:request:device:hour:" + deviceKey, 10, Duration.ofHours(1));
+
+        if (!testMobile) {
+            assertUnderLimit("auth:rl:mobile-otp:request:mobile:hour:" + hash(canonicalMobileNumber), 5, Duration.ofHours(1));
+        }
+    }
+
+    public void checkMobileOtpVerifyLimit(String deviceKey, String canonicalMobileNumber, boolean testMobile) {
+        assertUnderLimit("auth:rl:mobile-otp:verify:device:minute:" + deviceKey, 10, Duration.ofMinutes(1));
+
+        if (!testMobile) {
+            assertUnderLimit("auth:rl:mobile-otp:verify:mobile:minute:" + hash(canonicalMobileNumber), 5, Duration.ofMinutes(1));
+        }
+    }
+
     public String fingerprint(String value) {
         return hash(value == null ? "unknown" : value);
     }

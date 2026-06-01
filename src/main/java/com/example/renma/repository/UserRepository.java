@@ -11,5 +11,7 @@ public interface UserRepository extends MongoRepository<User, String> {
     Optional<User> findFirstByCanonicalEmailOrderByCreatedAtDesc(String canonicalEmail);
     Optional<User> findFirstByCanonicalEmailAndVerifiedFalseOrderByCreatedAtDesc(String canonicalEmail);
     List<User> findAllByCanonicalEmail(String canonicalEmail);
+    Optional<User> findByCanonicalMobileNumberAndTestAccountFalse(String canonicalMobileNumber);
+    Optional<User> findFirstByCanonicalMobileNumberOrderByCreatedAtDesc(String canonicalMobileNumber);
     Optional<User> findByUsername(String username);
 }

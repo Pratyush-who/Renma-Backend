@@ -33,6 +33,9 @@ public class SecurityConfig {
                                 "/auth/google",
                                 "/auth/forgot-password",
                                 "/auth/reset-password",
+                                "/auth/mobile/request-otp",
+                                "/auth/mobile/verify-otp",
+                                "/auth/mobile/register",
                                 "/oauth2/**",
                                 "/error"
                         ).permitAll()
