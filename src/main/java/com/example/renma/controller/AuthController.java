@@ -110,7 +110,7 @@ public class AuthController {
 
             if (email.testEmail()) {
                 userRepository.save(user);
-                return ResponseEntity.ok("Test user registered successfully! Use OTP 123456 to verify.");
+                return ResponseEntity.ok("Test user registered successfully! Use OTP 777777 to verify.");
             }
 
             String otp = otpService.createOtp(user.getId());
@@ -142,7 +142,7 @@ public class AuthController {
             User user = optionalUser.get();
             String otp = clean(verifyRequest.getOtp());
 
-            if (email.testEmail() && "123456".equals(otp)) {
+            if (email.testEmail() && "777777".equals(otp)) {
                 user.setVerified(true);
                 userRepository.save(user);
                 return ResponseEntity.ok("Email verified successfully!");

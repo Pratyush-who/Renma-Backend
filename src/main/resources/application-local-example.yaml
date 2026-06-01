@@ -34,7 +34,7 @@ auth:
   mobile:
     test-bypass-enabled: true
     test-mobile-number: "1234567890"
-    test-otp: "123456"
+    test-otp: "777777"
 
 obligr:
   otp:
