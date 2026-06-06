@@ -1,9 +1,9 @@
-package com.example.renma.controller;
+package com.example.renma.controller.auth;
 
-import com.example.renma.dto.MobileOtpRequest;
-import com.example.renma.dto.MobileOtpVerifyRequest;
-import com.example.renma.dto.MobileRegisterRequest;
-import com.example.renma.service.MobileAuthService;
+import com.example.renma.dto.auth.MobileOtpRequest;
+import com.example.renma.dto.auth.MobileOtpVerifyRequest;
+import com.example.renma.dto.auth.MobileRegisterRequest;
+import com.example.renma.service.auth.MobileAuthService;
 import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PostMapping;

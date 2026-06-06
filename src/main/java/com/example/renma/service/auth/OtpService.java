@@ -1,4 +1,4 @@
-package com.example.renma.service;
+package com.example.renma.service.auth;
 
 import com.example.renma.exception.RateLimitExceededException;
 import org.springframework.data.redis.core.StringRedisTemplate;

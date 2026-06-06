@@ -1,17 +1,20 @@
-package com.example.renma.service;
+package com.example.renma.service.auth;
 
-import com.example.renma.dto.AuthResponse;
-import com.example.renma.dto.MobileAuthResponse;
-import com.example.renma.dto.MobileOtpRequest;
-import com.example.renma.dto.MobileOtpResponse;
-import com.example.renma.dto.MobileOtpVerifyRequest;
-import com.example.renma.dto.MobileRegisterRequest;
+import com.example.renma.dto.auth.AuthResponse;
+import com.example.renma.dto.auth.MobileAuthResponse;
+import com.example.renma.dto.auth.MobileOtpRequest;
+import com.example.renma.dto.auth.MobileOtpResponse;
+import com.example.renma.dto.auth.MobileOtpVerifyRequest;
+import com.example.renma.dto.auth.MobileRegisterRequest;
 import com.example.renma.exception.RateLimitExceededException;
 import com.example.renma.model.User;
 import com.example.renma.repository.UserRepository;
 import com.example.renma.security.JwtUtil;
+import com.example.renma.service.EmailAddressService;
 import com.example.renma.service.EmailAddressService.NormalizedEmail;
+import com.example.renma.service.MobileNumberService;
 import com.example.renma.service.MobileNumberService.NormalizedMobileNumber;
+import com.example.renma.service.RateLimitService;
 import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.dao.DuplicateKeyException;
 import org.springframework.data.redis.RedisConnectionFailureException;
@@ -171,13 +174,13 @@ public class MobileAuthService {
             User user = User.builder()
                     .id(UUID.randomUUID().toString())
                     .username(registrationMobile.localTestMobile() ? uniqueUsername(username) : username)
+                    .displayName(clean(request.getDisplayName()))
                     .email(email.normalizedEmail())
                     .canonicalEmail(registrationMobile.localTestMobile() ? null : email.canonicalEmail())
                     .mobileNumber(mobile.mobileNumber())
                     .canonicalMobileNumber(mobile.canonicalMobileNumber())
                     .testAccount(registrationMobile.localTestMobile() || email.testEmail())
                     .profilePic(clean(request.getProfilePic()))
-                    .interests(normalizeInterests(request.getInterests()))
                     .plan(FREE_PLAN)
                     .isVerified(true)
                     .createdAt(new Date())

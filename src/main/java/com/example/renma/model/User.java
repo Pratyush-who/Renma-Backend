@@ -11,8 +11,11 @@ import org.springframework.data.mongodb.core.index.Indexed;
 import org.springframework.data.mongodb.core.mapping.Document;
 import org.springframework.data.mongodb.core.mapping.Field;
 
+import java.util.ArrayList;
 import java.util.Date;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 @Data
 @Builder
@@ -39,9 +42,12 @@ public class User {
 
     @Id
     private String id;
+    
     @Indexed(unique = true)
     @Field("userName")
     private String username;
+    
+    private String displayName;
     private String email;
     private String canonicalEmail;
     private String mobileNumber;
@@ -50,7 +56,44 @@ public class User {
     private boolean testAccount;
     private String password;
     private String profilePic;
-    private List<String> interests;
+    private String bio;
+
+    @Builder.Default
+    private List<String> followers = new ArrayList<>();
+    
+    @Builder.Default
+    private List<String> following = new ArrayList<>();
+    
+    @Builder.Default
+    private List<String> favorites = new ArrayList<>(); // IDs of favorite posts
+    
+    @Builder.Default
+    private List<String> posts = new ArrayList<>(); // IDs of user's creations
+    
+    @Builder.Default
+    private List<String> featuredWorks = new ArrayList<>();
+    
+    @Builder.Default
+    private List<String> publishedTemplates = new ArrayList<>();
+    
+    @Builder.Default
+    private Map<String, List<String>> boards = new HashMap<>(); // Board name -> list of post IDs
+    
+    @Builder.Default
+    private Map<String, String> socialLinks = new HashMap<>(); // Platform -> URL
+    
+    @Builder.Default
+    private int credits = 10; // Default credits for new users
+    
+    @Builder.Default
+    private long reputation = 0;
+    
+    @Builder.Default
+    private long totalLikesReceived = 0;
+    
+    @Builder.Default
+    private String role = "USER"; // USER, CREATOR
+    
     private boolean isVerified;
     private Date createdAt;
 }

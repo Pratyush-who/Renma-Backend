@@ -1,16 +1,14 @@
-package com.example.renma.dto;
+package com.example.renma.dto.auth;
 
 import com.fasterxml.jackson.annotation.JsonAlias;
 import lombok.Data;
 
-import java.util.List;
-
 @Data
-public class RegisterRequest {
+public class MobileRegisterRequest {
+    private String registrationToken;
     @JsonAlias("userName")
     private String username;
+    private String displayName;
     private String email;
-    private String password;
     private String profilePic;
-    private List<String> interests;
 }

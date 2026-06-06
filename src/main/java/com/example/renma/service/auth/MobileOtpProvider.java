@@ -1,4 +1,4 @@
-package com.example.renma.service;
+package com.example.renma.service.auth;
 
 public interface MobileOtpProvider {
     String sendOtp(String mobileNumber);

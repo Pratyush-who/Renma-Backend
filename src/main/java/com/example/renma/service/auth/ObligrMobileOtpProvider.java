@@ -1,4 +1,4 @@
-package com.example.renma.service;
+package com.example.renma.service.auth;
 
 import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.http.HttpHeaders;

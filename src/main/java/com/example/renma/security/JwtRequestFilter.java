@@ -1,6 +1,6 @@
 package com.example.renma.security;
 
-import com.example.renma.service.CustomUserDetailsService;
+import com.example.renma.service.auth.CustomUserDetailsService;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;

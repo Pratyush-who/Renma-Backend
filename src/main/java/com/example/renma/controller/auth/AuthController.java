@@ -1,12 +1,12 @@
-package com.example.renma.controller;
+package com.example.renma.controller.auth;
 
-import com.example.renma.dto.AuthRequest;
-import com.example.renma.dto.AuthResponse;
-import com.example.renma.dto.ChangePasswordRequest;
-import com.example.renma.dto.ForgotPasswordRequest;
-import com.example.renma.dto.RegisterRequest;
-import com.example.renma.dto.ResetPasswordRequest;
-import com.example.renma.dto.VerifyRequest;
+import com.example.renma.dto.auth.AuthRequest;
+import com.example.renma.dto.auth.AuthResponse;
+import com.example.renma.dto.auth.ChangePasswordRequest;
+import com.example.renma.dto.auth.ForgotPasswordRequest;
+import com.example.renma.dto.auth.RegisterRequest;
+import com.example.renma.dto.auth.ResetPasswordRequest;
+import com.example.renma.dto.auth.VerifyRequest;
 import com.example.renma.exception.RateLimitExceededException;
 import com.example.renma.model.User;
 import com.example.renma.repository.UserRepository;
@@ -14,7 +14,7 @@ import com.example.renma.security.JwtUtil;
 import com.example.renma.service.EmailAddressService;
 import com.example.renma.service.EmailAddressService.NormalizedEmail;
 import com.example.renma.service.EmailService;
-import com.example.renma.service.OtpService;
+import com.example.renma.service.auth.OtpService;
 import com.example.renma.service.RateLimitService;
 import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.dao.DuplicateKeyException;
@@ -97,12 +97,12 @@ public class AuthController {
             User user = User.builder()
                     .id(UUID.randomUUID().toString())
                     .username(finalUsername)
+                    .displayName(clean(registerRequest.getDisplayName()))
                     .email(email.normalizedEmail())
                     .canonicalEmail(email.canonicalEmail())
                     .testAccount(email.testEmail())
                     .password(passwordEncoder.encode(password))
                     .profilePic(clean(registerRequest.getProfilePic()))
-                    .interests(normalizeInterests(registerRequest.getInterests()))
                     .plan(FREE_PLAN)
                     .isVerified(false)
                     .createdAt(new Date())
@@ -337,19 +337,6 @@ public class AuthController {
 
     private boolean isValidPassword(String password) {
         return password != null && password.length() >= 8;
-    }
-
-    private List<String> normalizeInterests(List<String> interests) {
-        if (interests == null) {
-            return List.of();
-        }
-
-        return interests.stream()
-                .map(this::clean)
-                .filter(interest -> interest != null && interest.length() <= 40)
-                .distinct()
-                .limit(20)
-                .toList();
     }
 
     private String deviceKey(HttpServletRequest request) {

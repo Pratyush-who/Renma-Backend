@@ -1,6 +1,6 @@
-package com.example.renma.controller;
+package com.example.renma.controller.auth;
 
-import com.example.renma.dto.AuthResponse;
+import com.example.renma.dto.auth.AuthResponse;
 import com.example.renma.model.User;
 import com.example.renma.repository.UserRepository;
 import com.example.renma.security.JwtUtil;
@@ -48,13 +48,15 @@ public class OAuth2Controller {
         User user;
 
         if (optionalUser.isEmpty()) {
-            String username = uniqueUsername(principal.getAttribute("name"), email.normalizedEmail());
+            String name = principal.getAttribute("name");
+            String username = uniqueUsername(name, email.normalizedEmail());
             user = User.builder()
                     .id(UUID.randomUUID().toString())
                     .email(email.normalizedEmail())
                     .canonicalEmail(email.canonicalEmail())
                     .testAccount(email.testEmail())
                     .username(username)
+                    .displayName(clean(name))
                     .profilePic(principal.getAttribute("picture"))
                     .plan("free")
                     .isVerified(true)

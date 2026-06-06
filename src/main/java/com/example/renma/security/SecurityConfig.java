@@ -1,6 +1,6 @@
 package com.example.renma.security;
 
-import com.example.renma.service.CustomUserDetailsService;
+import com.example.renma.service.auth.CustomUserDetailsService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;

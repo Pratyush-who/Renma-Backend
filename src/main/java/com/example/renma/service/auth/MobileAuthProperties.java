@@ -1,4 +1,4 @@
-package com.example.renma.service;
+package com.example.renma.service.auth;
 
 import lombok.Data;
 import org.springframework.boot.context.properties.ConfigurationProperties;

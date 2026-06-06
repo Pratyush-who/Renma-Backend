@@ -1,4 +1,4 @@
-package com.example.renma.dto;
+package com.example.renma.dto.auth;
 
 import com.fasterxml.jackson.annotation.JsonAlias;
 import lombok.Data;

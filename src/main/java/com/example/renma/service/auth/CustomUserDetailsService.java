@@ -1,4 +1,4 @@
-package com.example.renma.service;
+package com.example.renma.service.auth;
 
 import com.example.renma.model.User;
 import com.example.renma.repository.UserRepository;
