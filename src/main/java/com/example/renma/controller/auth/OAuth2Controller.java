@@ -59,7 +59,8 @@ public class OAuth2Controller {
                     .displayName(clean(name))
                     .profilePic(principal.getAttribute("picture"))
                     .plan("free")
-                    .isVerified(true)
+                    .emailVerified(true)
+                    .mobileVerified(false)
                     .createdAt(new Date())
                     .build();
             userRepository.save(user);

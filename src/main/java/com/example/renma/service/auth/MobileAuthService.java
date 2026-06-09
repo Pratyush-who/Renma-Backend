@@ -112,7 +112,7 @@ public class MobileAuthService {
 
             if (!localTestMobile) {
                 Optional<User> existingUser = userRepository.findByCanonicalMobileNumberAndTestAccountFalse(mobile.canonicalMobileNumber())
-                        .filter(User::isVerified);
+                        .filter(User::isMobileVerified);
                 if (existingUser.isPresent()) {
                     return ResponseEntity.ok(new MobileAuthResponse(false, null, issueToken(existingUser.get())));
                 }
@@ -149,9 +149,13 @@ public class MobileAuthService {
         }
 
         String username = clean(request.getUsername());
+        String displayName = clean(request.getDisplayName());
         NormalizedEmail email = emailAddressService.normalize(request.getEmail());
         if (username == null) {
             return ResponseEntity.badRequest().body("Username is required");
+        }
+        if (displayName == null) {
+            return ResponseEntity.badRequest().body("Display name is required");
         }
         if (email == null) {
             return ResponseEntity.badRequest().body("Valid email is required");
@@ -174,7 +178,7 @@ public class MobileAuthService {
             User user = User.builder()
                     .id(UUID.randomUUID().toString())
                     .username(registrationMobile.localTestMobile() ? uniqueUsername(username) : username)
-                    .displayName(clean(request.getDisplayName()))
+                    .displayName(displayName)
                     .email(email.normalizedEmail())
                     .canonicalEmail(registrationMobile.localTestMobile() ? null : email.canonicalEmail())
                     .mobileNumber(mobile.mobileNumber())
@@ -182,7 +186,8 @@ public class MobileAuthService {
                     .testAccount(registrationMobile.localTestMobile() || email.testEmail())
                     .profilePic(clean(request.getProfilePic()))
                     .plan(FREE_PLAN)
-                    .isVerified(true)
+                    .emailVerified(email.testEmail())
+                    .mobileVerified(true)
                     .createdAt(new Date())
                     .build();
 

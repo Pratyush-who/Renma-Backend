@@ -14,6 +14,7 @@ import com.example.renma.security.JwtUtil;
 import com.example.renma.service.EmailAddressService;
 import com.example.renma.service.EmailAddressService.NormalizedEmail;
 import com.example.renma.service.EmailService;
+import com.example.renma.service.MobileNumberService;
 import com.example.renma.service.auth.OtpService;
 import com.example.renma.service.RateLimitService;
 import jakarta.servlet.http.HttpServletRequest;
@@ -43,6 +44,7 @@ public class AuthController {
     private final PasswordEncoder passwordEncoder;
     private final EmailService emailService;
     private final EmailAddressService emailAddressService;
+    private final MobileNumberService mobileNumberService;
     private final OtpService otpService;
     private final RateLimitService rateLimitService;
     private static final String VERIFICATION_EMAIL_RESPONSE = "If an account exists, we've sent a verification email.";
@@ -55,6 +57,7 @@ public class AuthController {
             PasswordEncoder passwordEncoder,
             EmailService emailService,
             EmailAddressService emailAddressService,
+            MobileNumberService mobileNumberService,
             OtpService otpService,
             RateLimitService rateLimitService
     ) {
@@ -63,6 +66,7 @@ public class AuthController {
         this.passwordEncoder = passwordEncoder;
         this.emailService = emailService;
         this.emailAddressService = emailAddressService;
+        this.mobileNumberService = mobileNumberService;
         this.otpService = otpService;
         this.rateLimitService = rateLimitService;
     }
@@ -70,14 +74,22 @@ public class AuthController {
     @PostMapping("/register")
     public ResponseEntity<?> register(@RequestBody RegisterRequest registerRequest, HttpServletRequest request) {
         String username = clean(registerRequest.getUsername());
+        String displayName = clean(registerRequest.getDisplayName());
         NormalizedEmail email = emailAddressService.normalize(registerRequest.getEmail());
         String password = registerRequest.getPassword();
+        MobileNumberService.NormalizedMobileNumber mobile = mobileNumberService.normalize(registerRequest.getMobileNumber());
 
         if (username == null) {
             return ResponseEntity.badRequest().body("Username is required");
         }
+        if (displayName == null) {
+            return ResponseEntity.badRequest().body("Display name is required");
+        }
         if (email == null) {
             return ResponseEntity.badRequest().body("Valid email is required");
+        }
+        if (mobile == null) {
+            return ResponseEntity.badRequest().body("Valid 10 digit mobile number is required");
         }
         if (!isValidPassword(password)) {
             return ResponseEntity.badRequest().body("Password must be at least 8 characters long");
@@ -93,18 +105,24 @@ public class AuthController {
             if (!email.testEmail() && userRepository.findByCanonicalEmail(email.canonicalEmail()).isPresent()) {
                 return ResponseEntity.badRequest().body("Email is already taken!");
             }
+            if (!email.testEmail() && userRepository.findByCanonicalMobileNumber(mobile.canonicalMobileNumber()).isPresent()) {
+                return ResponseEntity.badRequest().body("Mobile number is already taken!");
+            }
 
             User user = User.builder()
                     .id(UUID.randomUUID().toString())
                     .username(finalUsername)
-                    .displayName(clean(registerRequest.getDisplayName()))
+                    .displayName(displayName)
                     .email(email.normalizedEmail())
                     .canonicalEmail(email.canonicalEmail())
+                    .mobileNumber(mobile.mobileNumber())
+                    .canonicalMobileNumber(mobile.canonicalMobileNumber())
                     .testAccount(email.testEmail())
                     .password(passwordEncoder.encode(password))
                     .profilePic(clean(registerRequest.getProfilePic()))
                     .plan(FREE_PLAN)
-                    .isVerified(false)
+                    .emailVerified(false)
+                    .mobileVerified(false)
                     .createdAt(new Date())
                     .build();
 
@@ -143,13 +161,13 @@ public class AuthController {
             String otp = clean(verifyRequest.getOtp());
 
             if (email.testEmail() && "777777".equals(otp)) {
-                user.setVerified(true);
+                user.setEmailVerified(true);
                 userRepository.save(user);
                 return ResponseEntity.ok("Email verified successfully!");
             }
 
             if (otpService.verifyOtp(user.getId(), otp)) {
-                user.setVerified(true);
+                user.setEmailVerified(true);
                 userRepository.save(user);
                 return ResponseEntity.ok("Email verified successfully!");
             }
@@ -172,7 +190,7 @@ public class AuthController {
         try {
             rateLimitService.checkVerificationLimit(deviceKey(request), email.canonicalEmail());
             userRepository.findByCanonicalEmail(email.canonicalEmail())
-                    .filter(user -> !user.isVerified())
+                    .filter(user -> !user.isEmailVerified())
                     .filter(user -> !user.isTestAccount())
                     .ifPresent(user -> {
                         String otp = otpService.createOtp(user.getId());
@@ -196,7 +214,7 @@ public class AuthController {
         try {
             rateLimitService.checkVerificationLimit(deviceKey(request), email.canonicalEmail());
             userRepository.findByCanonicalEmail(email.canonicalEmail())
-                    .filter(User::isVerified)
+                    .filter(User::isEmailVerified)
                     .filter(user -> !user.isTestAccount())
                     .ifPresent(user -> {
                         String otp = otpService.createPasswordResetOtp(user.getId());
@@ -226,7 +244,7 @@ public class AuthController {
         try {
             rateLimitService.checkVerificationLimit(deviceKey(request), email.canonicalEmail());
             Optional<User> optionalUser = userRepository.findByCanonicalEmail(email.canonicalEmail())
-                    .filter(User::isVerified)
+                    .filter(User::isEmailVerified)
                     .filter(user -> !user.isTestAccount());
             if (optionalUser.isEmpty()) {
                 return ResponseEntity.badRequest().body("Invalid or expired OTP!");
@@ -260,7 +278,7 @@ public class AuthController {
 
         for (User user : candidates) {
             if (user.getPassword() != null && passwordEncoder.matches(authRequest.getPassword(), user.getPassword())) {
-                if (!user.isVerified()) {
+                if (!user.isEmailVerified()) {
                     return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Email is not verified");
                 }
                 return ResponseEntity.ok(new AuthResponse(issueToken(user)));
@@ -298,7 +316,7 @@ public class AuthController {
 
     private Optional<User> findUserForVerification(NormalizedEmail email) {
         if (email.testEmail()) {
-            return userRepository.findFirstByCanonicalEmailAndVerifiedFalseOrderByCreatedAtDesc(email.canonicalEmail())
+            return userRepository.findFirstByCanonicalEmailAndEmailVerifiedFalseOrderByCreatedAtDesc(email.canonicalEmail())
                     .or(() -> userRepository.findFirstByCanonicalEmailOrderByCreatedAtDesc(email.canonicalEmail()));
         }
 

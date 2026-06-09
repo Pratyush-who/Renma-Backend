@@ -57,43 +57,16 @@ public class User {
     private String password;
     private String profilePic;
     private String bio;
-
-    @Builder.Default
-    private List<String> followers = new ArrayList<>();
+    private boolean emailVerified;
+    private boolean mobileVerified;
     
     @Builder.Default
-    private List<String> following = new ArrayList<>();
-    
-    @Builder.Default
-    private List<String> favorites = new ArrayList<>(); // IDs of favorite posts
-    
-    @Builder.Default
-    private List<String> posts = new ArrayList<>(); // IDs of user's creations
-    
-    @Builder.Default
-    private List<String> featuredWorks = new ArrayList<>();
+    private List<String> savedTemplates = new ArrayList<>();
     
     @Builder.Default
     private List<String> publishedTemplates = new ArrayList<>();
-    
+
     @Builder.Default
-    private Map<String, List<String>> boards = new HashMap<>(); // Board name -> list of post IDs
-    
-    @Builder.Default
-    private Map<String, String> socialLinks = new HashMap<>(); // Platform -> URL
-    
-    @Builder.Default
-    private int credits = 10; // Default credits for new users
-    
-    @Builder.Default
-    private long reputation = 0;
-    
-    @Builder.Default
-    private long totalLikesReceived = 0;
-    
-    @Builder.Default
-    private String role = "USER"; // USER, CREATOR
-    
-    private boolean isVerified;
+    private List<String> pastCreations = new ArrayList<>();
     private Date createdAt;
 }
